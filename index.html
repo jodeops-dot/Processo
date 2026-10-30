@@ -1,0 +1,491 @@
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Audio Explorer</title>
+
+<style>
+*{box-sizing:border-box}
+body{
+ margin:0;background:#0b0d12;color:#eee;
+ font-family:Inter,Arial,sans-serif;
+}
+button,input{font:inherit}
+button{cursor:pointer}
+.layout{display:flex;min-height:100vh}
+.sidebar{
+ width:245px;background:#10131b;border-right:1px solid #252a36;
+ padding:25px 18px;position:fixed;height:100vh;
+}
+.logo{font-size:21px;font-weight:800;margin-bottom:45px}
+.logo span{color:#a78bfa}
+.nav-title{font-size:10px;color:#70798b;letter-spacing:2px;margin:20px 10px}
+.nav button{
+ width:100%;padding:13px;border:0;border-radius:9px;
+ background:transparent;color:#aab2c2;text-align:left;margin:3px 0;
+}
+.nav button:hover,.nav button.active{background:#27213b;color:#c7b5ff}
+.content{margin-left:245px;width:calc(100% - 245px);padding:35px 5% 130px}
+.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:35px}
+h1{font-size:30px;margin:0 0 7px}
+.subtitle{color:#858fa2}
+.btn{
+ border:1px solid #303747;background:#191e29;color:#eee;
+ border-radius:9px;padding:11px 16px;
+}
+.btn:hover{border-color:#a78bfa}
+.primary{background:#9875ef;border-color:#9875ef;color:#130e20;font-weight:bold}
+.stats{display:flex;gap:13px;margin:25px 0}
+.stat{background:#141923;border:1px solid #282e3a;border-radius:12px;padding:15px 20px;min-width:130px}
+.stat small{display:block;color:#8a94a6}
+.stat strong{font-size:23px}
+.toolbar{display:flex;gap:10px;margin:25px 0 14px}
+.search{flex:1;background:#141923;border:1px solid #292f3b;border-radius:9px;padding:12px;color:white;outline:none}
+.search:focus{border-color:#9875ef}
+.table{background:#121620;border:1px solid #292f3b;border-radius:13px;overflow:hidden}
+.table-head,.audio{
+ display:grid;grid-template-columns:2fr 1fr 100px;
+ gap:15px;padding:14px 18px;align-items:center
+}
+.table-head{font-size:11px;color:#798397;background:#181e29}
+.audio{border-top:1px solid #252b37;min-height:70px}
+.audio:hover{background:#1a2030}
+.file{display:flex;align-items:center;gap:12px;min-width:0}
+.file-icon{background:#29223d;color:#bdaaff;padding:12px;border-radius:10px}
+.file-name{font-weight:bold;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.file-info{font-size:11px;color:#858fa2}
+.id{font-family:monospace;color:#bba7ff;font-size:12px;overflow:hidden;text-overflow:ellipsis}
+.actions{display:flex;gap:5px;justify-content:flex-end}
+.action{border:0;background:transparent;color:#b4a0f4;padding:8px;border-radius:7px}
+.action:hover{background:#29223d}
+.empty{text-align:center;padding:65px 15px;color:#858fa2}
+.empty strong{display:block;color:white;font-size:17px;margin:10px}
+.player{
+ position:fixed;bottom:0;left:245px;right:0;background:#141923ed;
+ border-top:1px solid #303747;padding:15px 25px;
+ display:grid;grid-template-columns:1fr 1.5fr 1fr;gap:20px;align-items:center;
+ backdrop-filter:blur(15px)
+}
+.now{display:flex;align-items:center;gap:12px;min-width:0}
+.now-name{font-weight:bold;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.now-id{font-size:11px;color:#858fa2}
+.controls{display:flex;justify-content:center;align-items:center;gap:15px}
+.play{width:39px;height:39px;border:0;border-radius:50%;background:#b49aff;color:#171027;font-size:17px}
+.seek{display:flex;align-items:center;gap:9px;color:#8a94a6;font-size:11px}
+input[type=range]{accent-color:#a78bfa;width:100%}
+.volume{display:flex;align-items:center;gap:10px}
+.modal-bg{display:none;position:fixed;inset:0;background:#000a;z-index:10;align-items:center;justify-content:center;padding:15px}
+.modal-bg.show{display:flex}
+.modal{background:#171c27;border:1px solid #373047;border-radius:15px;padding:25px;width:420px;max-width:100%}
+.modal h2{margin-top:0}
+.modal label{display:block;color:#9ba5b6;font-size:12px;margin:15px 0 6px}
+.modal input{width:100%;background:#0d1118;border:1px solid #303747;color:white;padding:12px;border-radius:8px;outline:none}
+.modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:20px}
+.toast{position:fixed;top:20px;right:20px;background:#25213a;border:1px solid #55447e;padding:13px 18px;border-radius:9px;display:none;z-index:20}
+.toast.show{display:block}
+#fileInput{display:none}
+@media(max-width:800px){
+ .sidebar{display:none}.content{margin:0;width:100%;padding:22px 13px 125px}
+ .player{left:0;grid-template-columns:1fr 1fr}
+ .volume{display:none}
+ .table-head,.audio{grid-template-columns:2fr 1fr}
+ .table-head span:last-child{display:none}
+ .audio .actions{grid-column:2;grid-row:1}
+ .audio .id{display:none}
+}
+@media(max-width:480px){
+ .stats{gap:6px}.stat{min-width:0;flex:1;padding:10px}
+ .stat strong{font-size:18px}
+ .player{grid-template-columns:1fr auto;padding:10px}
+ .controls{grid-column:2;grid-row:1}
+ .seek{grid-column:1/-1}
+ .table-head,.audio{padding:11px 9px}
+}
+</style>
+</head>
+
+<body>
+<div class="layout">
+
+<aside class="sidebar">
+ <div class="logo">♫ Audio <span>Explorer</span></div>
+ <div class="nav">
+  <div class="nav-title">BIBLIOTECA</div>
+  <button class="active" onclick="showAll()">▦ &nbsp; Todos os áudios</button>
+  <button onclick="importAudio()">＋ &nbsp; Importar arquivos</button>
+ </div>
+</aside>
+
+<main class="content">
+ <div class="top">
+  <div style="color:#8993a5;font-size:12px">WORKSPACE / BIBLIOTECA</div>
+  <button class="btn primary" onclick="importAudio()">＋ Importar</button>
+ </div>
+
+ <h1>Todos os áudios</h1>
+ <p class="subtitle">Sua biblioteca pessoal de áudio.</p>
+
+ <div class="stats">
+  <div class="stat"><small>Arquivos</small><strong id="count">0</strong></div>
+  <div class="stat"><small>Duração total</small><strong id="duration">00:00</strong></div>
+ </div>
+
+ <div class="toolbar">
+  <input class="search" id="search" placeholder="⌕  Pesquisar áudio ou ID..." oninput="render()">
+  <button class="btn" onclick="render()">↻</button>
+ </div>
+
+ <div class="table">
+  <div class="table-head">
+   <span>NOME DO ARQUIVO</span>
+   <span>ID</span>
+   <span style="text-align:right">AÇÕES</span>
+  </div>
+  <div id="list">
+   <div class="empty">♫<strong>Sua biblioteca está vazia</strong>Importe seus primeiros áudios.</div>
+  </div>
+ </div>
+</main>
+</div>
+
+<div class="player">
+ <div class="now">
+  <div class="file-icon">♫</div>
+  <div style="min-width:0">
+   <div class="now-name" id="nowName">Nenhum áudio selecionado</div>
+   <div class="now-id" id="nowId">Audio Explorer</div>
+  </div>
+ </div>
+
+ <div>
+  <div class="controls">
+   <button class="action" onclick="skip(-10)">↶</button>
+   <button class="play" id="playBtn" onclick="togglePlay()">▶</button>
+   <button class="action" onclick="skip(10)">↷</button>
+  </div>
+  <div class="seek">
+   <span id="current">0:00</span>
+   <input type="range" id="seek" min="0" max="1000" value="0" oninput="seekAudio()">
+   <span id="total">0:00</span>
+  </div>
+ </div>
+
+ <div class="volume">◖ <input type="range" min="0" max="1" step=".01" value=".8" oninput="audio.volume=this.value"></div>
+</div>
+
+<input id="fileInput" type="file" accept="audio/*" multiple>
+<audio id="audio"></audio>
+
+<div class="modal-bg" id="modal">
+ <div class="modal">
+  <h2>Editar áudio</h2>
+  <p style="color:#8993a5;font-size:12px">Personalize as informações deste arquivo.</p>
+  <label>Nome</label>
+  <input id="editName">
+  <label>ID do áudio</label>
+  <input id="editId">
+  <div class="modal-actions">
+   <button class="btn" onclick="closeEdit()">Cancelar</button>
+   <button class="btn primary" onclick="saveEdit()">Salvar</button>
+  </div>
+ </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const DB_NAME='AudioExplorerDB';
+const STORE='audios';
+
+let db;
+let files=[];
+let currentId=null;
+let currentUrl=null;
+let editingId=null;
+
+const audio=document.getElementById('audio');
+
+function uid(){
+ return 'audio_'+Math.random().toString(36).slice(2,9);
+}
+
+function formatTime(seconds){
+ if(!Number.isFinite(seconds))return '00:00';
+ const m=Math.floor(seconds/60);
+ const s=Math.floor(seconds%60);
+ return String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
+}
+
+function notify(message){
+ const el=document.getElementById('toast');
+ el.textContent=message;
+ el.classList.add('show');
+ setTimeout(()=>el.classList.remove('show'),2500);
+}
+
+function openDB(){
+ return new Promise((resolve,reject)=>{
+  const request=indexedDB.open(DB_NAME,1);
+  request.onupgradeneeded=()=>{
+   request.result.createObjectStore(STORE,{keyPath:'id'});
+  };
+  request.onsuccess=()=>resolve(request.result);
+  request.onerror=()=>reject(request.error);
+ });
+}
+
+function dbRequest(request){
+ return new Promise((resolve,reject)=>{
+  request.onsuccess=()=>resolve(request.result);
+  request.onerror=()=>reject(request.error);
+ });
+}
+
+async function getFiles(){
+ return dbRequest(db.transaction(STORE,'readonly').objectStore(STORE).getAll());
+}
+
+async function saveFile(file){
+ return dbRequest(db.transaction(STORE,'readwrite').objectStore(STORE).put(file));
+}
+
+async function deleteFile(id){
+ return dbRequest(db.transaction(STORE,'readwrite').objectStore(STORE).delete(id));
+}
+
+async function load(){
+ files=await getFiles();
+ render();
+ openHash();
+}
+
+function importAudio(){
+ document.getElementById('fileInput').click();
+}
+
+function getDuration(file){
+ return new Promise(resolve=>{
+  const url=URL.createObjectURL(file);
+  const temp=new Audio();
+  temp.onloadedmetadata=()=>{
+   const duration=temp.duration;
+   URL.revokeObjectURL(url);
+   resolve(Number.isFinite(duration)?duration:0);
+  };
+  temp.onerror=()=>{
+   URL.revokeObjectURL(url);
+   resolve(0);
+  };
+  temp.src=url;
+ });
+}
+
+document.getElementById('fileInput').addEventListener('change',async event=>{
+ const selected=[...event.target.files];
+ let count=0;
+
+ for(const file of selected){
+  if(!file.type.startsWith('audio/'))continue;
+
+  const item={
+   id:uid(),
+   name:file.name,
+   blob:file,
+   duration:await getDuration(file),
+   date:Date.now()
+  };
+
+  await saveFile(item);
+  count++;
+ }
+
+ await load();
+ notify(count+' áudio(s) importado(s)');
+ event.target.value='';
+});
+
+function render(){
+ const query=document.getElementById('search').value.toLowerCase();
+ const filtered=files.filter(f=>
+  f.name.toLowerCase().includes(query)||
+  f.id.toLowerCase().includes(query)
+ );
+
+ document.getElementById('count').textContent=files.length;
+
+ const total=files.reduce((sum,f)=>sum+(f.duration||0),0);
+ document.getElementById('duration').textContent=formatTime(total);
+
+ const list=document.getElementById('list');
+
+ if(filtered.length===0){
+  list.innerHTML='<div class="empty">♫<strong>Nenhum áudio encontrado</strong>Importe arquivos ou altere a pesquisa.</div>';
+  return;
+ }
+
+ list.innerHTML=filtered.map(f=>`
+  <div class="audio" id="row-${escapeHTML(f.id)}">
+   <div class="file">
+    <div class="file-icon">♫</div>
+    <div style="min-width:0">
+     <div class="file-name">${escapeHTML(f.name)}</div>
+     <div class="file-info">${formatTime(f.duration)}</div>
+    </div>
+   </div>
+
+   <div class="id">${escapeHTML(f.id)}</div>
+
+   <div class="actions">
+    <button class="action" title="Reproduzir" onclick="playAudio('${escapeJS(f.id)}')">▶</button>
+    <button class="action" title="Editar" onclick="editAudio('${escapeJS(f.id)}')">✎</button>
+   </div>
+  </div>
+ `).join('');
+}
+
+function escapeHTML(value){
+ return String(value).replace(/[&<>"']/g,c=>({
+  '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+ })[c]);
+}
+
+function escapeJS(value){
+ return String(value).replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+}
+
+async function playAudio(id){
+ const file=files.find(f=>f.id===id);
+ if(!file)return;
+
+ if(currentUrl)URL.revokeObjectURL(currentUrl);
+
+ currentId=id;
+ currentUrl=URL.createObjectURL(file.blob);
+ audio.src=currentUrl;
+ audio.play().catch(()=>notify('Não foi possível reproduzir este áudio'));
+
+ document.getElementById('nowName').textContent=file.name;
+ document.getElementById('nowId').textContent='ID: '+file.id;
+
+ history.replaceState(null,'','#'+encodeURIComponent(id));
+}
+
+function togglePlay(){
+ if(!audio.src){
+  if(files.length)playAudio(files[0].id);
+  return;
+ }
+
+ if(audio.paused)audio.play();
+ else audio.pause();
+}
+
+audio.onplay=()=>document.getElementById('playBtn').textContent='Ⅱ';
+audio.onpause=()=>document.getElementById('playBtn').textContent='▶';
+
+audio.ontimeupdate=()=>{
+ document.getElementById('current').textContent=formatTime(audio.currentTime);
+ document.getElementById('seek').value=
+  audio.duration?audio.currentTime/audio.duration*1000:0;
+};
+
+audio.onloadedmetadata=()=>{
+ document.getElementById('total').textContent=formatTime(audio.duration);
+};
+
+function seekAudio(){
+ if(audio.duration){
+  audio.currentTime=document.getElementById('seek').value/1000*audio.duration;
+ }
+}
+
+function skip(seconds){
+ audio.currentTime=Math.max(0,Math.min(audio.duration||0,audio.currentTime+seconds));
+}
+
+function editAudio(id){
+ const file=files.find(f=>f.id===id);
+ if(!file)return;
+
+ editingId=id;
+ document.getElementById('editName').value=file.name;
+ document.getElementById('editId').value=file.id;
+ document.getElementById('modal').classList.add('show');
+}
+
+function closeEdit(){
+ document.getElementById('modal').classList.remove('show');
+}
+
+async function saveEdit(){
+ const file=files.find(f=>f.id===editingId);
+ if(!file)return;
+
+ const name=document.getElementById('editName').value.trim();
+ const id=document.getElementById('editId').value.trim();
+
+ if(!name||!id)return notify('Preencha os campos');
+
+ if(id!==editingId&&files.some(f=>f.id===id)){
+  return notify('Esse ID já existe');
+ }
+
+ await deleteFile(editingId);
+
+ file.name=name;
+ file.id=id;
+
+ await saveFile(file);
+
+ if(currentId===editingId){
+  currentId=id;
+  document.getElementById('nowName').textContent=name;
+  document.getElementById('nowId').textContent='ID: '+id;
+  history.replaceState(null,'','#'+encodeURIComponent(id));
+ }
+
+ editingId=null;
+ closeEdit();
+ await load();
+ notify('Áudio atualizado');
+}
+
+function showAll(){
+ document.getElementById('search').value='';
+ render();
+}
+
+function openHash(){
+ const id=decodeURIComponent(location.hash.slice(1));
+ if(!id)return;
+
+ const file=files.find(f=>f.id===id);
+
+ if(file){
+  playAudio(id);
+  setTimeout(()=>{
+   document.getElementById('row-'+CSS.escape(id))?.scrollIntoView({
+    behavior:'smooth',block:'center'
+   });
+  },100);
+ }else{
+  notify('ID não encontrado nesta biblioteca');
+ }
+}
+
+window.addEventListener('hashchange',openHash);
+
+(async()=>{
+ try{
+  db=await openDB();
+  await load();
+ }catch(error){
+  notify('Erro ao abrir a biblioteca');
+  console.error(error);
+ }
+})();
+</script>
+</body>
+</html>
